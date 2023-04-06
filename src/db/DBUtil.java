@@ -1,8 +1,7 @@
 package db;
 
 
-import models.News;
-import models.Translations;
+import models.*;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -28,22 +27,37 @@ public class DBUtil {
         }
     }
 
-    public static List<News> getNews(int langId) {
+    public static List<News> getNewsByLangId(int langID) {
         //Method for displaying elements by language, if a certain language is selected
         List<News> news = new ArrayList<>();
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "select * from news WHERE language_id=?");
-            statement.setInt(1, langId);
+                    "SELECT news.id, news.post_date, news_categories.id AS category_id," +
+                    "news_categories.name AS category_name, languages.id AS language_id, " +
+                    "news_contents.title, news_contents.content\n" +
+                    "FROM news\n" +
+                    "         INNER JOIN news_categories ON news.category_id = news_categories.id\n" +
+                    "         INNER JOIN news_contents ON news.id = news_contents.news_id\n" +
+                    "         INNER JOIN languages ON news_contents.language_id = languages.id where language_id=?");
+            statement.setInt(1, langID);
             ResultSet resultSet = statement.executeQuery();
 
             while (resultSet.next()) {
                 News n = new News();
-                n.setId(resultSet.getLong("id"));
-                n.setTitle(resultSet.getString("title"));
-                n.setContent(resultSet.getString("content"));
-                n.setLanguageId(resultSet.getInt("language_id"));
-                n.setPostDate(resultSet.getDate(("post_date")));
+                n.setId(resultSet.getInt("id"));
+                n.setPostDate(resultSet.getTimestamp("post_date").toLocalDateTime());
+
+                NewsCategory category = new NewsCategory();
+                category.setId(resultSet.getInt("category_id"));
+                category.setName(resultSet.getString("category_name"));
+                n.setNewsCategory(category);
+
+                NewsContent newsContent = new NewsContent();
+                newsContent.setTitle(resultSet.getString("title"));
+                newsContent.setContent(resultSet.getString("content"));
+                newsContent.setLanguageID(resultSet.getInt("language_id"));
+                n.setNewsContent(newsContent);
+
                 news.add(n);
             }
             statement.close();
@@ -54,20 +68,35 @@ public class DBUtil {
     }
 
     public static List<News> getAllNews() {
-        //Method for displaying all elements for Admin Page
+        //Method for displaying news for admin panel
         List<News> news = new ArrayList<>();
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "select * from news");
+                    "SELECT news.id, news.post_date, news_categories.id AS category_id," +
+                    "news_categories.name AS category_name, languages.id AS language_id, " +
+                    "news_contents.title, news_contents.content\n" +
+                    "FROM news\n" +
+                    "         INNER JOIN news_categories ON news.category_id = news_categories.id\n" +
+                    "         INNER JOIN news_contents ON news.id = news_contents.news_id\n" +
+                    "         INNER JOIN languages ON news_contents.language_id = languages.id");
             ResultSet resultSet = statement.executeQuery();
 
             while (resultSet.next()) {
                 News n = new News();
-                n.setId(resultSet.getLong("id"));
-                n.setTitle(resultSet.getString("title"));
-                n.setContent(resultSet.getString("content"));
-                n.setLanguageId(resultSet.getInt("language_id"));
-                n.setPostDate(resultSet.getDate(("post_date")));
+                n.setId(resultSet.getInt("id"));
+                n.setPostDate(resultSet.getTimestamp("post_date").toLocalDateTime());
+
+                NewsCategory category = new NewsCategory();
+                category.setId(resultSet.getInt("category_id"));
+                category.setName(resultSet.getString("category_name"));
+                n.setNewsCategory(category);
+
+                NewsContent newsContent = new NewsContent();
+                newsContent.setTitle(resultSet.getString("title"));
+                newsContent.setContent(resultSet.getString("content"));
+                newsContent.setLanguageID(resultSet.getInt("language_id"));
+                n.setNewsContent(newsContent);
+
                 news.add(n);
             }
             statement.close();
@@ -77,16 +106,69 @@ public class DBUtil {
         return news;
     }
 
-    public static void addNews(News n) {
-        //Method for adding news, post date is set by sql method NOW()
+    public static News getNewsById(int id) {
+        //Method for displaying news for view
+        News n = null;
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "insert into news(title, content, language_id, post_date) values (?, ?, ?, NOW())");
+                    "SELECT news.id, news.post_date, news_categories.id AS category_id, " +
+                    "news_categories.name AS category_name, " +
+                    "languages.id AS language_id, news_contents.title, news_contents.content\n" +
+                    "FROM news\n" +
+                    "INNER JOIN news_categories ON news.category_id = news_categories.id\n" +
+                    "INNER JOIN news_contents ON news.id = news_contents.news_id\n" +
+                    "INNER JOIN languages ON news_contents.language_id = languages.id where news_id =?");
+            statement.setInt(1, id);
+            ResultSet resultSet = statement.executeQuery();
 
-            statement.setString(1, n.getTitle());
-            statement.setString(2, n.getContent());
-            statement.setInt(3, n.getLanguageId());
+            if (resultSet.next()) {
+                n = new News();
+                n.setId(resultSet.getInt("id"));
+                n.setPostDate(resultSet.getTimestamp("post_date").toLocalDateTime());
 
+                NewsCategory category = new NewsCategory();
+                category.setId(resultSet.getInt("category_id"));
+                category.setName(resultSet.getString("category_name"));
+                n.setNewsCategory(category);
+
+                NewsContent newsContent = new NewsContent();
+                newsContent.setTitle(resultSet.getString("title"));
+                newsContent.setContent(resultSet.getString("content"));
+                newsContent.setLanguageID(resultSet.getInt("language_id"));
+                n.setNewsContent(newsContent);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return n;
+    }
+
+    public static int addNews(int categoryId) {
+        int id = 0;
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "insert into news(post_date, category_id) " + "values (NOW(), ?) RETURNING id ");
+            statement.setInt(1, categoryId);
+            ResultSet resultSet = statement.executeQuery();
+            if (resultSet.next()) {
+                id = resultSet.getInt("id");
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return id;
+    }
+
+    public static void addNewsContent(NewsContent newsContent) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "insert into news_contents(title, content, news_id, language_id) " + "values (?, ?, ?, ?)");
+            statement.setString(1, newsContent.getTitle());
+            statement.setString(2, newsContent.getContent());
+            statement.setInt(3, newsContent.getNewsID());
+            statement.setInt(4, newsContent.getLanguageID());
             statement.executeUpdate();
             statement.close();
         } catch (Exception e) {
@@ -94,10 +176,38 @@ public class DBUtil {
         }
     }
 
+    public static void editNews(int categoryId, NewsContent newsContent) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "UPDATE news SET category_id = ? where id=?");
+            statement.setInt(1, categoryId);
+            statement.setInt(2, newsContent.getNewsID());
+
+            statement.executeUpdate();
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public static void editNewsContent(NewsContent newsContent) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "UPDATE news_contents SET title = ?, content=?, language_id=? where news_id=?");
+            statement.setString(1, newsContent.getTitle());
+            statement.setString(2, newsContent.getContent());
+            statement.setInt(3, newsContent.getLanguageID());
+            statement.setInt(4, newsContent.getNewsID());
+
+            statement.executeUpdate();
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
     public static void deleteNews(int id) {
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "delete from news i where i.id=?");
+                    "delete from news  where id=?");
             statement.setInt(1, id);
 
             statement.executeUpdate();
@@ -107,98 +217,184 @@ public class DBUtil {
             e.printStackTrace();
         }
     }
-
-    public static List<Translations> getAllTranslations() {
-        //Method for
-        List<Translations> translations = new ArrayList<>();
+    public static void deleteNewsContent(int id) {
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "select * from translations");
+                    "delete from news_contents  where news_id=?");
+            statement.setInt(1, id);
+
+            statement.executeUpdate();
+            statement.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public static List<NewsCategory> getAllCategories() {
+        //Method for displaying all categories on create new news
+        List<NewsCategory> newsCategories = new ArrayList<>();
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "select * from news_categories");
             ResultSet resultSet = statement.executeQuery();
 
             while (resultSet.next()) {
-                Translations t = new Translations();
-                t.setId(resultSet.getInt("id"));
-                t.setTextTitle(resultSet.getString("text_title"));
-                t.setTextContent(resultSet.getString("text_content"));
-                t.setTextPostDate(resultSet.getString("text_post_date"));
-                t.setTextLanguage(resultSet.getString("text_language"));
-                t.setTextAdminPanel(resultSet.getString("btn_admin_panel"));
-                t.setTextAdd(resultSet.getString("btn_add"));
-                t.setTextCancel(resultSet.getString("btn_cancel"));
-                t.setTextModalTitle(resultSet.getString("modal_title"));
-                t.setTextDetails(resultSet.getString("text_details"));
-                t.setTextPostedAt(resultSet.getString("text_posted_at"));
-                t.setName(resultSet.getString("name"));
-                t.setTextDelete(resultSet.getString("text_delete"));
-                t.setTextForDelete(resultSet.getString("text_for_delete"));
-                t.setTextSave(resultSet.getString("text_save"));
-                translations.add(t);
+                NewsCategory newsCategory = new NewsCategory();
+                newsCategory.setId(resultSet.getInt("id"));
+                newsCategory.setName(resultSet.getString(("name")));
+                newsCategories.add(newsCategory);
             }
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return translations;
+        return newsCategories;
+    }
+    public static List<Languages> getAllLanguages() {
+        //Method for displaying all languages on create new news
+        List<Languages> allLanguages = new ArrayList<>();
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "select * from languages");
+            ResultSet resultSet = statement.executeQuery();
+
+            while (resultSet.next()) {
+                Languages languages = new Languages();
+                languages.setId(resultSet.getInt("id"));
+                languages.setName(resultSet.getString(("name")));
+                allLanguages.add(languages);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return allLanguages;
     }
 
-    public static Translations getTranslationsById(int id) {
-        //Method for fetch the words
-        Translations t = new Translations();
+    public static void addNewUser(User u) {
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "select * from translations where id=?");
-            statement.setLong(1, id);
-            ResultSet resultSet = statement.executeQuery();
+                    "insert into users(email,password, full_name, role_id) values (?, ?, ?,? )");
 
-            while (resultSet.next()) {
+            statement.setString(1, u.getEmail());
+            statement.setString(2, u.getPassword());
+            statement.setString(3, u.getFullName());
+            statement.setString(4, "2");
 
-                t.setId(resultSet.getInt("id"));
-                t.setTextTitle(resultSet.getString("text_title"));
-                t.setTextContent(resultSet.getString("text_content"));
-                t.setTextPostDate(resultSet.getString("text_post_date"));
-                t.setTextLanguage(resultSet.getString("text_language"));
-                t.setTextAdminPanel(resultSet.getString("btn_admin_panel"));
-                t.setTextAdd(resultSet.getString("btn_add"));
-                t.setTextCancel(resultSet.getString("btn_cancel"));
-                t.setTextModalTitle(resultSet.getString("modal_title"));
-                t.setTextDetails(resultSet.getString("text_details"));
-                t.setTextPostedAt(resultSet.getString("text_posted_at"));
-                t.setName(resultSet.getString("name"));
-                t.setTextDelete(resultSet.getString("text_delete"));
-                t.setTextForDelete(resultSet.getString("text_for_delete"));
-                t.setTextSave(resultSet.getString("text_save"));
-            }
+            statement.executeUpdate();
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return t;
     }
 
-    public static News getNewsById(int id) {
-        //Method for fetch the words
-        News n = new News();
+    public static User getUserByEmail(String email) {
+        User u = null;
         try {
             PreparedStatement statement = connection.prepareStatement("" +
-                    "select * from news where id=?");
-            statement.setLong(1, id);
+                    "select * from users where email=?");
+            statement.setString(1, email);
             ResultSet resultSet = statement.executeQuery();
-
-            while (resultSet.next()) {
-
-                n.setId(resultSet.getLong("id"));
-                n.setTitle(resultSet.getString("title"));
-                n.setContent(resultSet.getString("content"));
-                n.setLanguageId(resultSet.getInt("language_id"));
-                n.setPostDate(resultSet.getDate("post_date"));
-
+            if (resultSet.next()) {
+                u = new User();
+                u.setId(resultSet.getInt("id"));
+                u.setEmail(resultSet.getString("email"));
+                u.setPassword(resultSet.getString("password"));
+                u.setFullName(resultSet.getString("full_name"));
+                u.setRoleId(resultSet.getString("role_id"));
             }
             statement.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return n;
+        return u;
+    }
+
+    public static void editUser(User user) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("update users " +
+                    "set full_name=? where id = ?");
+            statement.setString(1, user.getFullName());
+            statement.setInt(2, user.getId());
+            statement.executeUpdate();
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void changePassword(User user) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("update users " +
+                    "set password=? where id = ?");
+            statement.setString(1, user.getPassword());
+            statement.setInt(2, user.getId());
+            statement.executeUpdate();
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void addComment(Comment comment) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "insert into comments(comment,post_date, user_id, news_id) values (?, now(), ?,? )");
+
+            statement.setString(1, comment.getComment());
+            statement.setInt(2, comment.getUser().getId());
+            statement.setInt(3, comment.getNews().getId());
+
+            statement.executeUpdate();
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    public static void deleteComments(int id) {
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "delete from comments WHERE news_id=?");
+
+            statement.setInt(1, id);
+
+            statement.executeUpdate();
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static List<Comment> getCommentsByNewsId(Integer newsId) {
+        List<Comment> comments = new ArrayList<>();
+        try {
+            PreparedStatement statement = connection.prepareStatement("" +
+                    "select c.id, c.comment, c.post_date,  c.user_id, c.news_id, u.full_name, u.email\n" +
+                    "                    from comments c\n" +
+                    "                    inner join users u on u.id = c.user_id\n" +
+                    "                    where c.news_id=?");
+            statement.setInt(1, newsId);
+            ResultSet resultSet = statement.executeQuery();
+            while (resultSet.next()) {
+                Comment comment = new Comment();
+                comment.setId(resultSet.getInt("id"));
+                comment.setComment(resultSet.getString("comment"));
+                comment.setPostDate(resultSet.getTimestamp("post_date").toLocalDateTime());
+
+                User user = new User();
+                user.setFullName(resultSet.getString("full_name"));
+                user.setFullName(resultSet.getString("email"));
+                comment.setUser(user);
+                News news = new News();
+                news.setId(resultSet.getInt("news_id"));
+                comment.setNews(news);
+                comments.add(comment);
+            }
+            statement.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return comments;
     }
 
 }

@@ -1,62 +1,52 @@
 package models;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 public class News {
-    private Long id;
-    private String title;
-    private String content;
-    private int languageId; // 1 - English, 2 - Русский
-    private Date postDate;
+    private int id;
+    private NewsCategory newsCategory;
+    private LocalDateTime postDate;
+    private NewsContent newsContent;
 
-    public News(Long id, String title, String content, int languageId, Date postDate) {
+    public News(int id, NewsCategory newsCategory, LocalDateTime postDate, NewsContent newsContent) {
         this.id = id;
-        this.title = title;
-        this.content = content;
-        this.languageId = languageId;
+        this.newsCategory = newsCategory;
         this.postDate = postDate;
+        this.newsContent = newsContent;
     }
 
     public News() {
     }
 
-    public Long getId() {
+    public int getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public void setId(int id) {
         this.id = id;
     }
 
-    public String getTitle() {
-        return title;
+    public NewsCategory getNewsCategory() {
+        return newsCategory;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
+    public void setNewsCategory(NewsCategory newsCategory) {
+        this.newsCategory = newsCategory;
     }
 
-    public String getContent() {
-        return content;
-    }
-
-    public void setContent(String content) {
-        this.content = content;
-    }
-
-    public int getLanguageId() {
-        return languageId;
-    }
-
-    public void setLanguageId(int languageId) {
-        this.languageId = languageId;
-    }
-
-    public Date getPostDate() {
+    public LocalDateTime getPostDate() {
         return postDate;
     }
 
-    public void setPostDate(Date postDate) {
+    public void setPostDate(LocalDateTime postDate) {
         this.postDate = postDate;
+    }
+
+    public NewsContent getNewsContent() {
+        return newsContent;
+    }
+
+    public void setNewsContent(NewsContent newsContent) {
+        this.newsContent = newsContent;
     }
 }

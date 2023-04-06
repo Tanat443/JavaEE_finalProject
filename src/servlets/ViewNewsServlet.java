@@ -3,35 +3,28 @@ package servlets;
 import db.DBUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import models.Comment;
 import models.News;
 import models.User;
 
 import java.io.IOException;
 import java.util.List;
 
-@WebServlet(value = "/home")
-public class HomeServlet extends HttpServlet {
+@WebServlet(value = "/viewNews")
+public class ViewNewsServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
         User user = (User) request.getSession().getAttribute("currentUser");
         if (user != null) {
-            int langID = 1;
-            Cookie[] cookies = request.getCookies();
-            if (cookies != null) {
-                for (Cookie c : cookies) {
-                    if (c.getName().equals("lang_id")) {
-                        langID = Integer.parseInt(c.getValue());
-                    }
-                }
-            }
-
-            List<News> news = DBUtil.getNewsByLangId(langID);
+            Integer id = Integer.parseInt(request.getParameter("id"));
+            News news = DBUtil.getNewsById(id);
+            List<Comment> comments = DBUtil.getCommentsByNewsId(id);
             request.setAttribute("news", news);
-            request.getRequestDispatcher("./index.jsp").forward(request, response);
+            request.setAttribute("comments", comments);
+            request.getRequestDispatcher("./viewNews.jsp").forward(request, response);
         }
         response.sendRedirect("/login");
     }
